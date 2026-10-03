@@ -46,6 +46,7 @@ func _run() -> void:
 		api.multiplayer_peer = peer
 		world._start_network(peer)
 	if use_webrtc:
+		await create_timer(0.3).timeout # Real signaling is asynchronous, unlike immediate local SDP wiring.
 		for index in [1, 2]:
 			var host_link := WebRTCPeerConnection.new()
 			var guest_link := WebRTCPeerConnection.new()

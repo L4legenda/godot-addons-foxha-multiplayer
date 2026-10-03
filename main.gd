@@ -7,9 +7,16 @@ var _active := false
 var _connected := false
 var _send_time := 0.0
 var _local_id := 1
+var _network_status: Label
 
 
 func _ready() -> void:
+	_network_status = Label.new()
+	_network_status.position = Vector2(18, 155)
+	_network_status.add_theme_color_override("font_color", Color("ffac73"))
+	_network_status.add_theme_color_override("font_outline_color", Color.BLACK)
+	_network_status.add_theme_constant_override("outline_size", 6)
+	$Hud.add_child(_network_status)
 	FoxhaGameMultiplayer.client.transport_ready.connect(_start_network)
 	FoxhaGameMultiplayer.client.lobby_changed.connect(_lobby_changed)
 	multiplayer.peer_connected.connect(_peer_connected)
@@ -36,7 +43,7 @@ func _spawn(id: int) -> void:
 	var actor := PlayerScene.instantiate()
 	actor.name = "Player_%d" % id
 	actor.locally_controlled = id == _local_id
-	actor.position = Vector3((id - 1) % 4 * 2.5, 0.1, -float((id - 1) / 4 as int) * 3)
+	actor.position = Vector3((id - 1) % 4 * 2.5, 0.1, -floorf((id - 1) / 4.0) * 3)
 	# Players do not push each other differently on separate machines.
 	actor.collision_layer = 2
 	actor.collision_mask = 1
@@ -144,3 +151,15 @@ func _can_send(id: int) -> bool:
 				return false
 		return connection.get("connected", false)
 	return peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
+
+func _process(_delta: float) -> void:
+	var room: Dictionary = FoxhaGameMultiplayer.client.lobby
+	if room.is_empty():
+		_network_status.text = "Одиночный режим · Shift+Tab — подключиться"
+	elif not _active:
+		_network_status.text = "Вы в лобби, но игровое соединение закрыто. Выйдите из лобби и подключитесь заново."
+	elif not _connected:
+		_network_status.text = "Лобби: %d игроков · устанавливаем игровое соединение…" % room.get("members", []).size()
+	else:
+		_network_status.text = "В мире: %d · в лобби: %d" % [players.size(), room.get("members", []).size()]

@@ -330,6 +330,9 @@ func _enter_lobby(result: Dictionary) -> bool:
 	if not result.ok:
 		_report(result)
 		return false
+	# A heartbeat started before create/join may still report no room (or old members).
+	# Its response must never tear down this new transport.
+	_generation += 1
 	lobby = result.data
 	_after = 0
 	rtc = WebRTCMultiplayerPeer.new()
