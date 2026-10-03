@@ -41,6 +41,9 @@ var _web: JavaScriptObject
 var _request_id := 0
 var _tick := 0
 var _last_error := ""
+var connection_status := ""
+var connection_log: Array[String] = []
+var _connection_states: Dictionary = {}
 var _restore_pending := false
 var _restoring := false
 var _logging_out := false
@@ -295,11 +298,9 @@ func _prepare_transport() -> bool:
 	if not lobby.is_empty():
 		message.emit("Сначала выйдите из текущего лобби.")
 		return false
-	var probe := WebRTCPeerConnection.new()
-	if probe.initialize({}) != OK:
-		message.emit("WebRTC недоступен в этой сборке игры.")
+	connection_status = ""
+	if not _probe_transport({}):
 		return false
-	probe.close()
 	var result := await _request("ice")
 	if not result.ok:
 		_report(result)
@@ -323,6 +324,30 @@ func _prepare_transport() -> bool:
 		_ice = supported
 	if not result.data.get("relayAvailable", false):
 		message.emit("Релей недоступен: подключение возможно не во всех сетях.")
+	return _probe_transport({"iceServers": _ice, "iceTransportPolicy": ice_transport_policy})
+
+
+func _probe_transport(configuration: Dictionary) -> bool:
+	# initialize() can succeed even when the native extension cannot create channels.
+	var connection := WebRTCPeerConnection.new()
+	if not OS.has_feature("web") and connection.get_class() in ["WebRTCPeerConnection", "WebRTCPeerConnectionExtension"]:
+		connection_status = "Не загружен webrtc-native. Обновите проект вместе с addons/webrtc_native и полностью перезапустите Godot."
+		_trace("Missing native WebRTC implementation: " + OS.get_name())
+		message.emit(connection_status)
+		return false # Calling virtual methods on the base extension logs errors but can return OK.
+	var error := connection.initialize(configuration)
+	var peer := WebRTCMultiplayerPeer.new()
+	if error == OK:
+		error = peer.create_server()
+	if error == OK:
+		error = peer.add_peer(connection, 2)
+	peer.close()
+	connection.close()
+	if error != OK:
+		connection_status = "Не удалось создать каналы WebRTC (%s). Проверьте webrtc-native и ошибки Godot." % error_string(error)
+		_trace("preflight: " + OS.get_name() + ", " + connection.get_class() + ", " + str(error))
+		message.emit(connection_status)
+		return false
 	return true
 
 
@@ -342,7 +367,12 @@ func _enter_lobby(result: Dictionary) -> bool:
 		message.emit("Не удалось создать сетевое подключение.")
 		return false
 	multiplayer.multiplayer_peer = rtc
-	_sync_peers()
+	if not _sync_peers():
+		var reason := connection_status
+		await leave_lobby()
+		connection_status = reason
+		message.emit(reason)
+		return false
 	lobby_changed.emit(lobby)
 	transport_ready.emit(rtc)
 	_poll_at = 0
@@ -356,9 +386,10 @@ func _my_peer_id() -> int:
 	return 0
 
 
-func _sync_peers() -> void:
+func _sync_peers() -> bool:
 	if rtc == null:
-		return
+		return false
+	var ready := true
 	var wanted: Array[int] = []
 	for member: Dictionary in lobby.get("members", []):
 		var id := int(member.peerId)
@@ -375,23 +406,40 @@ func _sync_peers() -> void:
 		if _peers.has(id):
 			continue
 		var connection := WebRTCPeerConnection.new()
-		if connection.initialize({"iceServers": _ice, "iceTransportPolicy": ice_transport_policy}) != OK or rtc.add_peer(connection, id) != OK:
-			message.emit("Не удалось подготовить WebRTC.")
+		var initialized := connection.initialize({"iceServers": _ice, "iceTransportPolicy": ice_transport_policy})
+		if initialized != OK:
+			ready = false
+			_transport_error("initialize", id, initialized)
+			connection.close()
+			continue
+		var added := rtc.add_peer(connection, id)
+		if added != OK:
+			ready = false
+			_transport_error("add_peer", id, added)
+			connection.close()
 			continue
 		_peers[id] = connection
 		_pending_ice[id] = []
 		_peer_started[id] = Time.get_ticks_msec()
 		connection.session_description_created.connect(_description_created.bind(id))
 		connection.ice_candidate_created.connect(_candidate_created.bind(id))
+		_trace("peer %d prepared (%s), local=%d" % [id, connection.get_class(), _my_peer_id()])
 		if _my_peer_id() == 1:
-			connection.create_offer()
+			var offered := connection.create_offer()
+			if offered != OK:
+				_transport_error("create_offer", id, offered)
+	return ready
 
 
 func _description_created(kind: String, sdp: String, id: int) -> void:
 	if not _peers.has(id):
 		return
-	if _peers[id].set_local_description(kind, sdp) == OK:
+	var error: int = _peers[id].set_local_description(kind, sdp)
+	if error == OK:
+		_trace("peer %d: local %s queued" % [id, kind])
 		_queue_signal(id, kind, {"sdp": _filter_sdp(sdp)})
+	else:
+		_transport_error("set_local_description " + kind, id, error)
 
 
 func _candidate_created(mid: String, index: int, sdp: String, id: int) -> void:
@@ -425,6 +473,7 @@ func _queue_signal(id: int, kind: String, payload: Dictionary) -> void:
 func _apply_signal(data: Dictionary) -> void:
 	var id := int(data.get("fromPeerId", 0))
 	if not _peers.has(id):
+		_trace("signal from unknown peer %d ignored" % id)
 		return
 	var parser := JSON.new()
 	if parser.parse(str(data.get("payload", ""))) != OK:
@@ -434,6 +483,7 @@ func _apply_signal(data: Dictionary) -> void:
 		return
 	var connection: WebRTCPeerConnection = _peers[id]
 	if connection.get_connection_state() in [WebRTCPeerConnection.STATE_CLOSED, WebRTCPeerConnection.STATE_FAILED]:
+		_trace("signal from peer %d ignored: connection closed/failed" % id)
 		return
 	var kind: String = data.get("kind", "")
 	if kind == "ice":
@@ -442,16 +492,42 @@ func _apply_signal(data: Dictionary) -> void:
 		if not _remote_ready.get(id, false):
 			_pending_ice[id].append(payload)
 		else:
-			connection.add_ice_candidate(str(payload.get("mid", "")), int(payload.get("index", 0)), str(payload.get("sdp", "")))
+			_add_candidate(connection, id, payload)
 	elif (kind == "offer" and _my_peer_id() != 1) or (kind == "answer" and _my_peer_id() == 1):
-		if connection.set_remote_description(kind, _filter_sdp(str(payload.get("sdp", "")))) == OK:
+		_trace("peer %d: received %s" % [id, kind])
+		var error := connection.set_remote_description(kind, _filter_sdp(str(payload.get("sdp", ""))))
+		if error == OK:
 			_remote_ready[id] = true
 			for candidate: Dictionary in _pending_ice[id]:
-				connection.add_ice_candidate(str(candidate.get("mid", "")), int(candidate.get("index", 0)), str(candidate.get("sdp", "")))
+				_add_candidate(connection, id, candidate)
 			_pending_ice[id].clear()
+		else:
+			_transport_error("set_remote_description " + kind, id, error)
+
+
+func _add_candidate(connection: WebRTCPeerConnection, id: int, candidate: Dictionary) -> void:
+	var error := connection.add_ice_candidate(str(candidate.get("mid", "")), int(candidate.get("index", 0)), str(candidate.get("sdp", "")))
+	if error != OK:
+		_transport_error("add_ice_candidate", id, error)
+
+
+func _trace(text: String) -> void:
+	# Never include SDP, ICE addresses, tokens, or credentials in diagnostics.
+	connection_log.append(text)
+	if connection_log.size() > 60:
+		connection_log.pop_front()
+	print("[Foxha WebRTC] ", text)
+
+
+func _transport_error(stage: String, id: int, error: int) -> void:
+	connection_status = "WebRTC: %s, игрок %d: %s (%d)" % [stage, id, error_string(error), error]
+	_trace(connection_status)
+	message.emit(connection_status)
 
 
 func _drop_lobby() -> void:
+	connection_status = ""
+	_connection_states.clear()
 	_generation += 1
 	if rtc != null:
 		if multiplayer.multiplayer_peer == rtc:
@@ -483,11 +559,19 @@ func _process(_delta: float) -> void:
 		_flush_signal()
 	for id: int in _peer_started.keys():
 		var connection: WebRTCPeerConnection = _peers[id]
+		var state := connection.get_connection_state()
+		if _connection_states.get(id, -1) != state:
+			_connection_states[id] = state
+			_trace("peer %d: state=%d, remote SDP=%s" % [id, state, _remote_ready.get(id, false)])
 		if connection.get_connection_state() == WebRTCPeerConnection.STATE_CONNECTED:
 			_peer_started.erase(id)
+			connection_status = ""
 		elif now - int(_peer_started[id]) > 30000:
 			_peer_started.erase(id)
-			message.emit("Не удалось подключиться за 30 секунд. Проверьте сеть и переподключитесь.")
+			if connection_status.is_empty():
+				connection_status = "Нет ответа WebRTC от игрока %d." % id if not _remote_ready.get(id, false) else "WebRTC: не найден рабочий маршрут к игроку %d." % id
+			_trace(connection_status)
+			message.emit(connection_status + " Переподключитесь к лобби.")
 
 
 func _poll() -> void:
@@ -528,9 +612,9 @@ func _poll() -> void:
 				message.emit("Лобби закрыто или время ожидания истекло.")
 			elif server_room.code == lobby.code:
 				lobby = server_room
-				_sync_peers()
+				var peers_ready := _sync_peers()
 				lobby_changed.emit(lobby)
-				if rtc != null:
+				if rtc != null and peers_ready:
 					var code: String = lobby.code
 					var signals := await _request("receive", {"code": code, "after": _after})
 					if generation == _generation and lobby.get("code") == code:

@@ -9,8 +9,11 @@
 ## Подключение
 
 1. Откройте проект в Godot и нажмите F5 (или F6 для `main.tscn`).
-   Для native сначала установите зависимость:
-   `powershell -ExecutionPolicy Bypass -File scripts/install-webrtc.ps1`.
+   Официальный `webrtc-native 1.2.2-stable` уже находится в Git, в
+   `addons/webrtc_native`: дополнительная установка не нужна.
+   После первого обновления полностью закройте и заново откройте Godot.
+   Включены библиотеки Windows, Linux и macOS (Apple Silicon и Intel),
+   а также остальные платформы из официального архива и лицензии.
    Готовая Windows-сборка содержит DLL рядом с EXE: переносите всю папку.
 2. Откройте оверлей через Shift+Tab и войдите в Foxha или зарегистрируйтесь.
    Подтверждение почты выполняется кодом внутри игры.
@@ -57,6 +60,17 @@ godot --headless --path . --export-release Web builds/web/index.html
 Web-сборку загружайте целиком на страницу этой игры в Foxha: ей нужен
 postMessage-мост родительской страницы. Простое открытие index.html с диска
 не обеспечивает авторизацию и лобби. Экспортные шаблоны должны совпадать
-с версией Godot. Native DLL устанавливаются отдельно и не хранятся в Git.
+с версией Godot. Native-библиотеки хранятся в Git вместе с проектом.
 
 [Документация аддона](addons/foxha-game-multiplayer/README.md).
+
+Если на macOS появляются ошибки `WebRTCPeerConnectionExtension::_initialize`
+или `_create_data_channel must be overridden`, реализация WebRTC не загружена.
+Обновите репозиторий и перезапустите редактор. Если каталог уже существует,
+проверьте ошибки загрузки `.gdextension` в Output при старте Godot.
+Скрипты `scripts/install-webrtc.ps1` и `scripts/install-webrtc.sh` оставлены
+для восстановления зависимости при ручном переносе проекта.
+
+Источник бинарных файлов: официальный архив
+`https://github.com/godotengine/webrtc-native/releases/download/1.2.2-stable/godot-extension-webrtc_native.zip`.
+SHA-256: `98e9446921740d995bd9ca1be48798dc3c2ceed51e044a25ce18b3cff11f56e5`.

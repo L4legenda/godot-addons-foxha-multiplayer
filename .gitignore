@@ -2,6 +2,6 @@
 .godot/
 /android/
 
-# Official native WebRTC binaries, installed with scripts/install-webrtc.ps1.
-/addons/webrtc_native/
+# Generated exports; the official WebRTC dependency is versioned with the project.
 /builds/
+/addons/webrtc_native/**/*.TMP

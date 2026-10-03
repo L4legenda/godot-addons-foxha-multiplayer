@@ -1,2 +1,6 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# Preserve the exact upstream distribution, including native frameworks and licenses.
+addons/webrtc_native/** -text
+addons/webrtc_native/LICENSE.* -whitespace

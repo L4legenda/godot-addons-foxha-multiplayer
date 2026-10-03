@@ -160,6 +160,9 @@ func _process(_delta: float) -> void:
 	elif not _active:
 		_network_status.text = "Вы в лобби, но игровое соединение закрыто. Выйдите из лобби и подключитесь заново."
 	elif not _connected:
-		_network_status.text = "Лобби: %d игроков · устанавливаем игровое соединение…" % room.get("members", []).size()
+		var detail: String = FoxhaGameMultiplayer.client.connection_status
+		_network_status.text = detail if not detail.is_empty() else "Лобби: %d игроков · устанавливаем игровое соединение…" % room.get("members", []).size()
 	else:
 		_network_status.text = "В мире: %d · в лобби: %d" % [players.size(), room.get("members", []).size()]
+		if not FoxhaGameMultiplayer.client.connection_status.is_empty():
+			_network_status.text += " · " + FoxhaGameMultiplayer.client.connection_status
