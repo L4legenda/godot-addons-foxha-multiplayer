@@ -10,24 +10,33 @@ config_version=5
 
 [application]
 
-config/name="TestMultiple"
-run/main_scene="res://main.tscn"
+config/name="Foxha Playground"
+run/main_scene="res://prototype/prototype.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 FoxhaGameMultiplayer="*res://addons/foxha-game-multiplayer/game_multiplayer.gd"
-MCPRuntime="*uid://b5cgi6n6qqy0o"
 
 [display]
 
-window/stretch/mode="canvas_items"
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="disabled"
 window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/foxha-game-multiplayer/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/foxha-game-multiplayer/plugin.cfg")
+
+[foxha_multiplayer]
+
+api_url="https://games.foxha.ru"
+game_id="479ac58f-9231-4746-b04b-0057548509a8"
+protocol_version="playground-1"
 
 [physics]
 

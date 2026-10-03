@@ -4,3 +4,4 @@
 
 # Official native WebRTC binaries, installed with scripts/install-webrtc.ps1.
 /addons/webrtc_native/
+/builds/

@@ -13,6 +13,8 @@ var api_url := "https://games.foxha.ru"
 var game_id := ""
 var protocol_version := "1"
 var allow_local_http := false
+## "relay" is useful for diagnostics; normal games use "all".
+var ice_transport_policy := "all"
 var user: Dictionary = {}
 var lobby: Dictionary = {}
 var rtc: WebRTCMultiplayerPeer
@@ -195,6 +197,22 @@ func _prepare_transport() -> bool:
 		_report(result)
 		return false
 	_ice = result.data.get("iceServers", [])
+	if not OS.has_feature("web"):
+		# The pinned libjuice native build supports TURN over UDP only.
+		var supported: Array = []
+		for server: Dictionary in _ice:
+			var urls: Array = []
+			var source = server.get("urls", [])
+			if source is String:
+				source = [source]
+			for url: String in source:
+				if not url.begins_with("turns:") and not "transport=tcp" in url:
+					urls.append(url)
+			if not urls.is_empty():
+				var entry := server.duplicate()
+				entry.urls = urls
+				supported.append(entry)
+		_ice = supported
 	if not result.data.get("relayAvailable", false):
 		message.emit("Релей недоступен: подключение возможно не во всех сетях.")
 	return true
@@ -246,7 +264,7 @@ func _sync_peers() -> void:
 		if _peers.has(id):
 			continue
 		var connection := WebRTCPeerConnection.new()
-		if connection.initialize({"iceServers": _ice}) != OK or rtc.add_peer(connection, id) != OK:
+		if connection.initialize({"iceServers": _ice, "iceTransportPolicy": ice_transport_policy}) != OK or rtc.add_peer(connection, id) != OK:
 			message.emit("Не удалось подготовить WebRTC.")
 			continue
 		_peers[id] = connection
@@ -262,11 +280,26 @@ func _description_created(kind: String, sdp: String, id: int) -> void:
 	if not _peers.has(id):
 		return
 	if _peers[id].set_local_description(kind, sdp) == OK:
-		_queue_signal(id, kind, {"sdp": sdp})
+		_queue_signal(id, kind, {"sdp": _filter_sdp(sdp)})
 
 
 func _candidate_created(mid: String, index: int, sdp: String, id: int) -> void:
+	if ice_transport_policy == "relay":
+		print("TURN diagnostic: gathered ", sdp.get_slice(" typ ", 1).get_slice(" ", 0))
+	if ice_transport_policy == "relay" and not " typ relay" in sdp:
+		return
 	_queue_signal(id, "ice", {"mid": mid, "index": index, "sdp": sdp})
+
+
+func _filter_sdp(sdp: String) -> String:
+	if ice_transport_policy != "relay":
+		return sdp
+	# webrtc-native ignores the browser's iceTransportPolicy setting.
+	var lines := PackedStringArray()
+	for line in sdp.split("\n"):
+		if not line.begins_with("a=candidate:") or " typ relay" in line:
+			lines.append(line)
+	return "\n".join(lines)
 
 
 func _queue_signal(id: int, kind: String, payload: Dictionary) -> void:
@@ -289,14 +322,18 @@ func _apply_signal(data: Dictionary) -> void:
 	if not payload is Dictionary:
 		return
 	var connection: WebRTCPeerConnection = _peers[id]
+	if connection.get_connection_state() in [WebRTCPeerConnection.STATE_CLOSED, WebRTCPeerConnection.STATE_FAILED]:
+		return
 	var kind: String = data.get("kind", "")
 	if kind == "ice":
+		if ice_transport_policy == "relay" and not " typ relay" in str(payload.get("sdp", "")):
+			return
 		if not _remote_ready.get(id, false):
 			_pending_ice[id].append(payload)
 		else:
 			connection.add_ice_candidate(str(payload.get("mid", "")), int(payload.get("index", 0)), str(payload.get("sdp", "")))
 	elif (kind == "offer" and _my_peer_id() != 1) or (kind == "answer" and _my_peer_id() == 1):
-		if connection.set_remote_description(kind, str(payload.get("sdp", ""))) == OK:
+		if connection.set_remote_description(kind, _filter_sdp(str(payload.get("sdp", "")))) == OK:
 			_remote_ready[id] = true
 			for candidate: Dictionary in _pending_ice[id]:
 				connection.add_ice_candidate(str(candidate.get("mid", "")), int(candidate.get("index", 0)), str(candidate.get("sdp", "")))
