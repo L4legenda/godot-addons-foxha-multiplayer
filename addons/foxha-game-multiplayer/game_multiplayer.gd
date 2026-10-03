@@ -37,7 +37,8 @@ func _ready() -> void:
 	var session := SessionPanel.new()
 	session.attach(player_list, client)
 	player_list.action_requested.connect(_on_action_requested)
-	client.initialize.call_deferred()
+	# Start restoring during autoload startup, before the first game frame.
+	client.initialize()
 
 
 func open_list() -> void:

@@ -23,6 +23,8 @@ func _settle() -> void:
 
 
 func _run() -> void:
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	root.size = Vector2i(1152, 800)
 	var overlay = load("res://addons/foxha-game-multiplayer/player_list.tscn").instantiate()
 	root.add_child(overlay)
 	await _settle()
@@ -59,7 +61,7 @@ func _run() -> void:
 	await create_timer(0.3).timeout
 	_check(overlay.is_open and overlay.visible, "Overlay opens while the game is paused")
 	_check(root.gui_get_focus_owner() == overlay.search, "Search receives keyboard focus")
-	_check(is_equal_approx(overlay.panel.size.x, 260), "Initial width is halved even with long names")
+	_check(is_equal_approx(overlay.panel.size.x, 520), "Initial width remains stable with long names")
 	var resize_press := InputEventMouseButton.new()
 	resize_press.button_index = MOUSE_BUTTON_LEFT
 	resize_press.pressed = true
@@ -69,7 +71,7 @@ func _run() -> void:
 	var resize_motion := InputEventMouseMotion.new()
 	resize_motion.position = resize_press.position + Vector2(140, 20)
 	overlay._input(resize_motion)
-	_check(is_equal_approx(overlay.panel.size.x, 400), "Dragging grip changes width")
+	_check(is_equal_approx(overlay.panel.size.x, 660), "Dragging grip changes width")
 	_check(overlay.panel.size.y > overlay._resize_start_size.y, "Dragging grip changes height")
 	resize_press.pressed = false
 	overlay._input(resize_press)
@@ -97,7 +99,7 @@ func _run() -> void:
 	paused = false
 	overlay.open()
 	await _settle()
-	_check(is_equal_approx(overlay.panel.size.x, 400), "User size survives close and reopen")
+	_check(is_equal_approx(overlay.panel.size.x, 660), "User size survives close and reopen")
 	overlay.close()
 	overlay.open()
 	await create_timer(0.3).timeout

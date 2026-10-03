@@ -7,6 +7,7 @@ var _players_button: Button
 var _session_button: Button
 var _notice: Label
 var _auth: VBoxContainer
+var _loading: Label
 var _lobby: VBoxContainer
 var _email: LineEdit
 var _password: LineEdit
@@ -24,6 +25,7 @@ var _create: Button
 var _join: Button
 var _join_code: LineEdit
 var _capacity: SpinBox
+var _capacity_label: Label
 var _visibility: OptionButton
 var _leave: Button
 var _retry: Button
@@ -46,12 +48,28 @@ func attach(target: CanvasLayer, network: ClientScript) -> void:
 	add_child(tabs)
 	_players_button = _button(tabs, "Игроки", func(): _show_players = true; _update_visibility())
 	_session_button = _button(tabs, "Аккаунт", func(): _show_players = false; _update_visibility())
+	var tab_group := ButtonGroup.new()
+	for tab: Button in [_players_button, _session_button]:
+		tab.toggle_mode = true
+		tab.button_group = tab_group
+		tab.custom_minimum_size.y = 40
 	_notice = _label(self, "")
 	_notice.name = "Notice"
+	_notice.visible = false
 	_notice.add_theme_font_size_override("font_size", 12)
 	_notice.add_theme_color_override("font_color", Color("#ffac73"))
 	_notice.max_lines_visible = 3
-	client.message.connect(func(text: String): _notice.text = text; _notice.tooltip_text = text)
+	client.message.connect(func(text: String):
+		_notice.text = text
+		_notice.tooltip_text = text
+		_notice.visible = not text.is_empty())
+	_loading = _label(self, "Восстанавливаем вход…")
+	_loading.name = "SessionLoading"
+	_loading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_loading.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_loading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_loading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	client.initialization_changed.connect(_update_visibility)
 	_auth = VBoxContainer.new()
 	_auth.name = "Auth"
 	_auth.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -87,7 +105,7 @@ func attach(target: CanvasLayer, network: ClientScript) -> void:
 	scroller.add_child(_lobby)
 	_room_status = _label(_lobby, "Создайте лобби или введите код.")
 	_room_status.add_theme_font_size_override("font_size", 16)
-	_label(_lobby, "Максимум игроков")
+	_capacity_label = _label(_lobby, "Максимум игроков")
 	_capacity = SpinBox.new()
 	_capacity.min_value = 2
 	_capacity.max_value = 8
@@ -101,6 +119,7 @@ func attach(target: CanvasLayer, network: ClientScript) -> void:
 	_create = _button(_lobby, "Создать лобби", _create_lobby)
 	_join_code = _field(_lobby, "Код лобби", "RoomCode")
 	_join_code.max_length = 10
+	_join_code.text_submitted.connect(func(_text: String): _join_lobby())
 	_join = _button(_lobby, "Присоединиться", _join_lobby)
 	_members = _label(_lobby, "")
 	_leave = _button(_lobby, "Выйти из лобби", _leave_lobby)
@@ -109,7 +128,14 @@ func attach(target: CanvasLayer, network: ClientScript) -> void:
 	_invites = VBoxContainer.new()
 	_lobby.add_child(_invites)
 	_label(_invites, "Пока нет приглашений.")
-	_button(_lobby, "Выйти из аккаунта", _logout)
+	var logout_button := _button(overlay.get_node("Panel/Margin/Content/Profile/Header"), "", _logout)
+	logout_button.name = "Logout"
+	logout_button.icon = preload("res://addons/foxha-game-multiplayer/icons/logout.svg")
+	logout_button.tooltip_text = "Выйти из аккаунта"
+	logout_button.custom_minimum_size = Vector2(40, 40)
+	logout_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	logout_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	logout_button.theme_type_variation = &"QuietButton"
 	client.user_changed.connect(_user_changed)
 	client.lobby_changed.connect(_lobby_changed)
 	client.social_changed.connect(_social_changed)
@@ -206,14 +232,21 @@ func _user_changed(data: Dictionary) -> void:
 
 func _update_visibility() -> void:
 	var logged_in := not client.user.is_empty()
+	var loading := client.initializing
+	_loading.visible = loading
+	_players_button.get_parent().visible = not loading
+	_players_button.set_pressed_no_signal(_show_players)
+	_session_button.set_pressed_no_signal(not _show_players)
+	overlay._close_menu(false)
 	var content: VBoxContainer = overlay.get_node("Panel/Margin/Content")
-	content.get_node("Profile").visible = logged_in
+	content.get_node("Profile").visible = logged_in and not loading
 	content.get_node("Heading").visible = false
-	for part in ["Search", "Filters", "Scroll"]:
-		content.get_node(part).visible = logged_in and _show_players
+	content.get_node("Filters").visible = false
+	for part in ["Search", "Scroll"]:
+		content.get_node(part).visible = logged_in and _show_players and not loading
 	size_flags_vertical = Control.SIZE_FILL if logged_in and _show_players else Control.SIZE_EXPAND_FILL
-	_auth.get_parent().visible = not logged_in
-	get_node("LobbyScroll").visible = logged_in and not _show_players
+	_auth.get_parent().visible = not logged_in and not loading
+	get_node("LobbyScroll").visible = logged_in and not _show_players and not loading
 
 
 func _lobby_changed(data: Dictionary) -> void:
@@ -223,6 +256,7 @@ func _lobby_changed(data: Dictionary) -> void:
 	_join_code.visible = not joined
 	_join.visible = not joined
 	_capacity.visible = not joined
+	_capacity_label.visible = not joined
 	_visibility.visible = not joined
 	_leave.visible = joined
 	_retry.visible = joined and client._my_peer_id() != 1

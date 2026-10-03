@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=11 format=3]
+[gd_resource type="Theme" load_steps=13 format=3]
 
 [sub_resource type="StyleBoxFlat" id="ButtonNormal"]
 bg_color = Color(0.105, 0.11, 0.12, 1)
@@ -71,6 +71,28 @@ content_margin_bottom = 4.0
 color = Color(0.18, 0.185, 0.2, 1)
 thickness = 1
 
+[sub_resource type="StyleBoxFlat" id="QuietHover"]
+bg_color = Color(0.22, 0.145, 0.1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+content_margin_left = 6.0
+content_margin_right = 6.0
+content_margin_top = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="QuietPressed"]
+bg_color = Color(0.34, 0.18, 0.09, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+content_margin_left = 6.0
+content_margin_right = 6.0
+content_margin_top = 4.0
+content_margin_bottom = 4.0
+
 [sub_resource type="StyleBoxFlat" id="Scroll"]
 bg_color = Color(0.075, 0.08, 0.09, 1)
 content_margin_left = 3.0
@@ -106,6 +128,12 @@ Button/styles/hover_pressed = SubResource("ButtonPressed")
 Button/styles/focus = SubResource("Focus")
 QuietButton/base_type = &"Button"
 QuietButton/styles/normal = SubResource("Quiet")
+QuietButton/styles/hover = SubResource("QuietHover")
+QuietButton/styles/pressed = SubResource("QuietPressed")
+QuietButton/styles/hover_pressed = SubResource("QuietPressed")
+QuietButton/colors/icon_normal_color = Color(0.8, 0.82, 0.85, 1)
+QuietButton/colors/icon_hover_color = Color(1, 1, 1, 1)
+QuietButton/colors/icon_pressed_color = Color(1, 1, 1, 1)
 Label/colors/font_color = Color(0.93, 0.93, 0.94, 1)
 MutedLabel/base_type = &"Label"
 MutedLabel/colors/font_color = Color(0.56, 0.58, 0.62, 1)

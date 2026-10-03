@@ -1,6 +1,6 @@
 extends Node
 ## HTTPS account/lobby client and host-based WebRTC transport.
-## Credentials live only in memory. No account cookie or password is persisted.
+## Only the game-scoped refresh token is persisted; never the password or site cookie.
 
 signal user_changed(user: Dictionary)
 signal lobby_changed(lobby: Dictionary)
@@ -8,6 +8,7 @@ signal social_changed(data: Dictionary)
 signal confirmation_required
 signal message(text: String)
 signal transport_ready(peer: WebRTCMultiplayerPeer)
+signal initialization_changed
 
 var api_url := "https://games.foxha.ru"
 var game_id := ""
@@ -16,12 +17,15 @@ var allow_local_http := false
 ## "relay" is useful for diagnostics; normal games use "all".
 var ice_transport_policy := "all"
 var user: Dictionary = {}
+var initializing := false
+var _initialized := false
 var lobby: Dictionary = {}
 var rtc: WebRTCMultiplayerPeer
 var _tokens: Dictionary = {}
 var _renew_at := 0.0
 var _poll_at := 0
 var _polling := false
+var _leaving := false
 var _refreshing := false
 var _generation := 0
 var _after := 0
@@ -37,6 +41,10 @@ var _web: JavaScriptObject
 var _request_id := 0
 var _tick := 0
 var _last_error := ""
+var _restore_pending := false
+var _restoring := false
+var _logging_out := false
+var _restore_after := 0
 
 
 func _ready() -> void:
@@ -60,16 +68,34 @@ func _ready() -> void:
 
 
 func initialize() -> void:
+	if initializing or _initialized:
+		return
+	initializing = true
+	initialization_changed.emit()
+	await _initialize_session()
+	_initialized = true
+	initializing = false
+	initialization_changed.emit()
+
+
+func _initialize_session() -> void:
 	if game_id.is_empty():
 		message.emit("Сетевая игра пока не настроена.")
 		return
+	if not OS.has_feature("web"):
+		if FileAccess.file_exists(_session_path()):
+			await _restore_session()
+		return
+	var generation := _generation
 	var result := await _request("me")
-	if result.ok:
+	if result.ok and generation == _generation:
 		user = result.data
 		user_changed.emit(user)
 
 
 func authenticate(register: bool, email: String, password: String, display_name := "") -> bool:
+	_generation += 1
+	_restore_pending = false
 	var generation := _generation
 	var result := await _request("auth_register" if register else "auth_login",
 		{"email": email, "password": password, "displayName": display_name})
@@ -111,16 +137,88 @@ func _use_session(data: Dictionary) -> void:
 	_tokens = data.get("tokens", {})
 	_renew_at = Time.get_unix_time_from_system() + 12 * 60
 	_last_error = ""
+	_save_session()
 	user_changed.emit(user)
 
 
 func logout() -> void:
-	await _request("logout")
+	if _logging_out:
+		return
+	_logging_out = true
 	_generation += 1
+	var generation := _generation
+	_restore_pending = false
+	_clear_saved_session()
+	await _request("logout")
+	_logging_out = false
+	if generation != _generation:
+		return
 	_drop_lobby()
 	user = {}
 	_tokens = {}
 	user_changed.emit(user)
+
+
+func _session_path() -> String:
+	# Separate games and API environments cannot reuse each other's credentials.
+	return "user://foxha-session-" + (api_url.trim_suffix("/") + "|" + game_id.to_lower()).sha256_text() + ".cfg"
+
+
+func _save_session() -> void:
+	if OS.has_feature("web") or str(_tokens.get("refreshToken", "")).is_empty():
+		return
+	var config := ConfigFile.new()
+	config.set_value("session", "refresh_token", _tokens.refreshToken)
+	config.set_value("session", "expires_at", str(_tokens.get("refreshExpiresAt", "")))
+	var temporary := _session_path() + ".tmp"
+	if config.save(temporary) != OK:
+		message.emit("Не удалось сохранить вход на этом устройстве.")
+		return
+	if OS.has_feature("linux") or OS.has_feature("macos"):
+		FileAccess.set_unix_permissions(temporary, FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER)
+	if DirAccess.rename_absolute(temporary, _session_path()) != OK:
+		message.emit("Не удалось сохранить вход на этом устройстве.")
+
+
+func _clear_saved_session() -> void:
+	if not OS.has_feature("web"):
+		for path in [_session_path(), _session_path() + ".tmp"]:
+			if FileAccess.file_exists(path):
+				if DirAccess.remove_absolute(path) != OK:
+					message.emit("Не удалось удалить сохранённую сессию с устройства.")
+
+
+func _restore_session() -> void:
+	if _restoring:
+		return
+	var config := ConfigFile.new()
+	if config.load(_session_path()) != OK:
+		_clear_saved_session()
+		_restore_pending = false
+		return
+	var token: String = str(config.get_value("session", "refresh_token", ""))
+	if token.is_empty() or token.length() > 4096:
+		_clear_saved_session()
+		_restore_pending = false
+		return
+	_restoring = true
+	var generation := _generation
+	var result := await _request("auth_refresh", {"refreshToken": token})
+	_restoring = false
+	if generation != _generation:
+		return
+	if result.ok:
+		_restore_pending = false
+		_use_session(result.data)
+		message.emit("Вход восстановлен.")
+	elif result.get("status", 0) in [400, 401, 403, 404]:
+		_clear_saved_session()
+		_restore_pending = false
+		message.emit("Сохранённая сессия истекла. Войдите снова.")
+	else:
+		_restore_pending = true
+		_restore_after = Time.get_ticks_msec() + 15000
+		message.emit("Нет связи для восстановления входа. Повторим автоматически.")
 
 
 func create_lobby(capacity := 8, visibility := "friends") -> bool:
@@ -161,12 +259,20 @@ func invite_player(id: String) -> void:
 
 
 func leave_lobby() -> void:
+	if _leaving:
+		return
 	var code: String = lobby.get("code", "")
-	_drop_lobby()
+	_leaving = true
+	_generation += 1 # Ignore heartbeats started before this leave request.
 	if not code.is_empty():
 		var result := await _request("leave", {"code": code})
 		if not result.ok and result.get("status", 0) != 404:
 			_report(result)
+			_leaving = false
+			return # Keep the room and exit button available for retry.
+	_drop_lobby()
+	_leaving = false
+	message.emit("Вы вышли из лобби.")
 
 
 func reconnect() -> void:
@@ -177,6 +283,8 @@ func reconnect() -> void:
 		message.emit("Хосту нужно пересоздать лобби и пригласить игроков.")
 		return
 	await leave_lobby()
+	if not lobby.is_empty():
+		return
 	await join_lobby(code)
 
 
@@ -358,10 +466,14 @@ func _drop_lobby() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _logging_out:
+		return
+	if _restore_pending and not _restoring and Time.get_ticks_msec() >= _restore_after:
+		_restore_session()
 	if user.is_empty() or game_id.is_empty():
 		return
 	var now := Time.get_ticks_msec()
-	if not _polling and now >= _poll_at:
+	if not _polling and not _leaving and now >= _poll_at:
 		_poll_at = now + 1000
 		_poll()
 	if not _sending and not _outbox.is_empty() and now >= _send_after:
@@ -380,6 +492,9 @@ func _poll() -> void:
 	var generation := _generation
 	if not _tokens.is_empty() and Time.get_unix_time_from_system() >= _renew_at:
 		await _refresh()
+	if generation != _generation:
+		_polling = false
+		return
 	var result := await _request("heartbeat")
 	if generation != _generation:
 		_polling = false
@@ -388,13 +503,23 @@ func _poll() -> void:
 		_report(result)
 		_poll_at = Time.get_ticks_msec() + 5000
 		if result.get("status", 0) == 401:
-			_tokens = {}
-			user = {}
-			_drop_lobby()
-			user_changed.emit(user)
+			if not str(_tokens.get("refreshToken", "")).is_empty():
+				await _refresh() # A temporary outage must not erase a valid saved session.
+			else:
+				_clear_saved_session()
+				_tokens = {}
+				user = {}
+				_drop_lobby()
+				user_changed.emit(user)
 	else:
 		var server_room = result.data.get("room")
-		if not lobby.is_empty():
+		if server_room is Dictionary and lobby.get("code") != server_room.get("code"):
+			if not lobby.is_empty():
+				_drop_lobby()
+			lobby = server_room
+			lobby_changed.emit(lobby)
+			message.emit("Аккаунт уже в лобби. Можно выйти кнопкой ниже; соединение другого окна не перехватывается.")
+		elif not lobby.is_empty():
 			if server_room == null:
 				_drop_lobby()
 				message.emit("Лобби закрыто или время ожидания истекло.")
@@ -402,15 +527,16 @@ func _poll() -> void:
 				lobby = server_room
 				_sync_peers()
 				lobby_changed.emit(lobby)
-				var code: String = lobby.code
-				var signals := await _request("receive", {"code": code, "after": _after})
-				if generation == _generation and lobby.get("code") == code:
-					if signals.ok:
-						for data: Dictionary in signals.data:
-							_apply_signal(data)
-							_after = maxi(_after, int(data.id))
-					else:
-						_report(signals)
+				if rtc != null:
+					var code: String = lobby.code
+					var signals := await _request("receive", {"code": code, "after": _after})
+					if generation == _generation and lobby.get("code") == code:
+						if signals.ok:
+							for data: Dictionary in signals.data:
+								_apply_signal(data)
+								_after = maxi(_after, int(data.id))
+						else:
+							_report(signals)
 		_tick += 1
 		if _tick % 3 == 1:
 			var social := await _request("social")
@@ -447,6 +573,13 @@ func _refresh() -> void:
 		return
 	if result.ok:
 		_use_session(result.data)
+	elif result.get("status", 0) in [400, 401, 403]:
+		_clear_saved_session()
+		_tokens = {}
+		user = {}
+		_drop_lobby()
+		user_changed.emit(user)
+		message.emit("Сессия истекла. Войдите снова.")
 	else:
 		_renew_at = Time.get_unix_time_from_system() + 10
 	_refreshing = false

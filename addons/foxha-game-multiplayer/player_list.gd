@@ -55,7 +55,7 @@ var _drag_offset := Vector2.ZERO
 var _resizing := false
 var _resize_origin := Vector2.ZERO
 var _resize_start_size := Vector2.ZERO
-var _preferred_size := Vector2(260, 640)
+var _preferred_size := Vector2(520, 640)
 var _size_initialized := false
 var _placed := false
 var _ui_scale := 1.0
@@ -73,6 +73,11 @@ func _ready() -> void:
 	dimmer.modulate.a = 0.0
 	panel.modulate.a = 0.0
 	_build_menu()
+	close_button.text = ""
+	close_button.icon = preload("res://addons/foxha-game-multiplayer/icons/close.svg")
+	close_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	close_button.custom_minimum_size = Vector2(36, 36)
+	close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close_button.pressed.connect(close)
 	search.text_changed.connect(_on_search_changed)
 	scroll.get_v_scroll_bar().value_changed.connect(func(_value: float): _close_menu(false))
@@ -389,7 +394,10 @@ func open() -> void:
 	if not is_open:
 		return
 	_layout_panel()
-	search.grab_focus()
+	if search.is_visible_in_tree():
+		search.grab_focus()
+	else:
+		get_viewport().gui_release_focus()
 	_animate(1.0)
 
 
