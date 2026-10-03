@@ -1,24 +1,53 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://addons/foxha-game-multiplayer/player_list.gd" id="1_script"]
+[ext_resource type="Theme" path="res://addons/foxha-game-multiplayer/overlay_theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://addons/foxha-game-multiplayer/resize_grip.gd" id="3_grip"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.09, 0.1, 0.12, 0.96)
-border_width_left = 2
+[sub_resource type="StyleBoxFlat" id="PanelStyle"]
+bg_color = Color(0.055, 0.059, 0.067, 1)
+border_width_left = 1
 border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(1, 1, 1, 0.25)
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.22, 0.15, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.45)
-shadow_size = 10
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 24
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_separator"]
-color = Color(1, 1, 1, 0.18)
-thickness = 2
+[sub_resource type="StyleBoxFlat" id="ProfileStyle"]
+bg_color = Color(0.125, 0.098, 0.082, 1)
+border_width_left = 3
+border_color = Color(1, 0.43, 0.12, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 10.0
+content_margin_right = 10.0
+content_margin_top = 14.0
+content_margin_bottom = 14.0
+
+[sub_resource type="StyleBoxFlat" id="AvatarStyle"]
+bg_color = Color(0.76, 0.29, 0.09, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="BadgeStyle"]
+bg_color = Color(0.24, 0.135, 0.075, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 8.0
+content_margin_right = 8.0
+content_margin_top = 4.0
+content_margin_bottom = 4.0
 
 [node name="PlayerList" type="CanvasLayer"]
 process_mode = 3
@@ -32,61 +61,243 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
-color = Color(0, 0, 0, 1)
+color = Color(0.015, 0.018, 0.023, 1)
 
 [node name="Panel" type="PanelContainer" parent="."]
-custom_minimum_size = Vector2(460, 0)
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+offset_right = 260.0
+offset_bottom = 640.0
+theme = ExtResource("2_theme")
+theme_override_styles/panel = SubResource("PanelStyle")
 
 [node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 14
 
 [node name="Content" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 14
 
-[node name="Header" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="TitleBar" type="HBoxContainer" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_constants/separation = 8
+mouse_default_cursor_shape = 6
+
+[node name="Brand" type="Label" parent="Panel/Margin/Content/TitleBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.48, 0.18, 1)
+theme_override_font_sizes/font_size = 18
+text = "FOXHA"
+
+[node name="BrandCaption" type="Label" parent="Panel/Margin/Content/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 11
+text = " /  ОВЕРЛЕЙ"
+
+[node name="Close" type="Button" parent="Panel/Margin/Content/TitleBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Закрыть · Esc / Shift+Tab"
+mouse_default_cursor_shape = 2
+theme_type_variation = &"QuietButton"
+theme_override_font_sizes/font_size = 22
+text = "×"
+
+[node name="Profile" type="PanelContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("ProfileStyle")
+
+[node name="Header" type="HBoxContainer" parent="Panel/Margin/Content/Profile"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Avatar" type="ColorRect" parent="Panel/Margin/Content/Header"]
-custom_minimum_size = Vector2(44, 44)
+[node name="Avatar" type="PanelContainer" parent="Panel/Margin/Content/Profile/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 size_flags_vertical = 4
-color = Color(0.29, 0.62, 0.96, 1)
+theme_override_styles/panel = SubResource("AvatarStyle")
 
-[node name="Nickname" type="Label" parent="Panel/Margin/Content/Header"]
+[node name="Initial" type="Label" parent="Panel/Margin/Content/Profile/Header/Avatar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 23
+text = "F"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Identity" type="VBoxContainer" parent="Panel/Margin/Content/Profile/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_constants/separation = 3
+
+[node name="Nickname" type="Label" parent="Panel/Margin/Content/Profile/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "Foxha"
+text_overrun_behavior = 3
+
+[node name="MyStatus" type="Label" parent="Panel/Margin/Content/Profile/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.55, 0.28, 1)
+theme_override_font_sizes/font_size = 13
+text = "●  В сети"
+text_overrun_behavior = 3
+
+[node name="You" type="Label" parent="Panel/Margin/Content/Profile/Header"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 0.58, 0.32, 1)
+theme_override_font_sizes/font_size = 10
+theme_override_styles/normal = SubResource("BadgeStyle")
+text = "ЭТО ВЫ"
+
+[node name="Heading" type="VBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Title" type="Label" parent="Panel/Margin/Content/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 20
-text = "Nickname"
+text = "Друзья и игроки"
+
+[node name="OnlineCount" type="Label" parent="Panel/Margin/Content/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 12
+text = "0 в сети"
+
+[node name="Search" type="LineEdit" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+placeholder_text = "Найти игрока…"
+clear_button_enabled = true
+max_length = 80
+
+[node name="Filters" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="All" type="Button" parent="Panel/Margin/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "Все"
+mouse_default_cursor_shape = 2
+
+[node name="InGame" type="Button" parent="Panel/Margin/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "В игре"
+mouse_default_cursor_shape = 2
+
+[node name="Online" type="Button" parent="Panel/Margin/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "В сети"
+mouse_default_cursor_shape = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Lists" type="VBoxContainer" parent="Panel/Margin/Content/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="FriendsTitle" type="Label" parent="Panel/Margin/Content/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "ДРУЗЬЯ  /  0"
+
+[node name="FriendsList" type="VBoxContainer" parent="Panel/Margin/Content/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="OtherTitle" type="Label" parent="Panel/Margin/Content/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "ДРУГИЕ ИГРОКИ  /  0"
+
+[node name="OtherList" type="VBoxContainer" parent="Panel/Margin/Content/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Empty" type="VBoxContainer" parent="Panel/Margin/Content/Scroll/Lists"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/Margin/Content/Scroll/Lists/Empty"]
+layout_mode = 2
+text = "Игроки не найдены"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Panel/Margin/Content/Scroll/Lists/Empty"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 12
+text = "Измените запрос или выберите другой фильтр."
+horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="Separator" type="HSeparator" parent="Panel/Margin/Content"]
 layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_separator")
 
-[node name="FriendsTitle" type="Label" parent="Panel/Margin/Content"]
+[node name="Footer" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 0.5)
-theme_override_font_sizes/font_size = 14
-text = "Friends"
 
-[node name="FriendsList" type="VBoxContainer" parent="Panel/Margin/Content"]
+[node name="Hint" type="Label" parent="Panel/Margin/Content/Footer"]
 layout_mode = 2
-theme_override_constants/separation = 6
+size_flags_horizontal = 3
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 11
+text = "Shift+Tab · Закрыть"
 
-[node name="OtherTitle" type="Label" parent="Panel/Margin/Content"]
+[node name="Demo" type="Label" parent="Panel/Margin/Content/Footer"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 0.5)
-theme_override_font_sizes/font_size = 14
-text = "Other"
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 11
+text = "ДЕМО"
 
-[node name="OtherList" type="VBoxContainer" parent="Panel/Margin/Content"]
+[node name="ResizeGrip" type="Control" parent="Panel/Margin/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
-theme_override_constants/separation = 6
+tooltip_text = "Потяните, чтобы изменить размер окна"
+mouse_default_cursor_shape = 12
+script = ExtResource("3_grip")

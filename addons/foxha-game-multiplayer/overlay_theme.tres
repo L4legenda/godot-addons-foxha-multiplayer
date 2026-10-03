@@ -1,0 +1,125 @@
+[gd_resource type="Theme" load_steps=11 format=3]
+
+[sub_resource type="StyleBoxFlat" id="ButtonNormal"]
+bg_color = Color(0.105, 0.11, 0.12, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 8.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="ButtonHover"]
+bg_color = Color(0.22, 0.145, 0.1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 8.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="ButtonPressed"]
+bg_color = Color(0.96, 0.39, 0.09, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 8.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="Focus"]
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(1, 0.62, 0.32, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+border_width_left = 2
+border_width_right = 2
+border_width_top = 2
+border_width_bottom = 2
+
+[sub_resource type="StyleBoxFlat" id="Input"]
+bg_color = Color(0.035, 0.039, 0.045, 1)
+border_color = Color(0.2, 0.21, 0.23, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+border_width_left = 1
+border_width_right = 1
+border_width_top = 1
+border_width_bottom = 1
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 8.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxEmpty" id="Quiet"]
+content_margin_left = 6.0
+content_margin_right = 6.0
+content_margin_top = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxLine" id="Separator"]
+color = Color(0.18, 0.185, 0.2, 1)
+thickness = 1
+
+[sub_resource type="StyleBoxFlat" id="Scroll"]
+bg_color = Color(0.075, 0.08, 0.09, 1)
+content_margin_left = 3.0
+content_margin_right = 3.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="Grabber"]
+bg_color = Color(0.3, 0.25, 0.21, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxFlat" id="GrabberHover"]
+bg_color = Color(0.95, 0.42, 0.14, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[resource]
+default_font_size = 14
+Button/colors/font_color = Color(0.73, 0.74, 0.76, 1)
+Button/colors/font_hover_color = Color(1, 0.72, 0.47, 1)
+Button/colors/font_pressed_color = Color(0.08, 0.035, 0.01, 1)
+Button/colors/font_hover_pressed_color = Color(0.08, 0.035, 0.01, 1)
+Button/colors/font_focus_color = Color(1, 0.81, 0.63, 1)
+Button/styles/normal = SubResource("ButtonNormal")
+Button/styles/hover = SubResource("ButtonHover")
+Button/styles/pressed = SubResource("ButtonPressed")
+Button/styles/hover_pressed = SubResource("ButtonPressed")
+Button/styles/focus = SubResource("Focus")
+QuietButton/base_type = &"Button"
+QuietButton/styles/normal = SubResource("Quiet")
+Label/colors/font_color = Color(0.93, 0.93, 0.94, 1)
+MutedLabel/base_type = &"Label"
+MutedLabel/colors/font_color = Color(0.56, 0.58, 0.62, 1)
+SectionLabel/base_type = &"Label"
+SectionLabel/colors/font_color = Color(0.61, 0.62, 0.65, 1)
+SectionLabel/font_sizes/font_size = 11
+LineEdit/colors/font_color = Color(0.94, 0.94, 0.95, 1)
+LineEdit/colors/font_placeholder_color = Color(0.47, 0.49, 0.53, 1)
+LineEdit/colors/caret_color = Color(1, 0.48, 0.18, 1)
+LineEdit/colors/selection_color = Color(0.53, 0.25, 0.11, 1)
+LineEdit/styles/normal = SubResource("Input")
+LineEdit/styles/focus = SubResource("Focus")
+HSeparator/styles/separator = SubResource("Separator")
+VScrollBar/styles/scroll = SubResource("Scroll")
+VScrollBar/styles/grabber = SubResource("Grabber")
+VScrollBar/styles/grabber_highlight = SubResource("GrabberHover")
+VScrollBar/styles/grabber_pressed = SubResource("GrabberHover")

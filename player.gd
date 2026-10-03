@@ -18,6 +18,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if FoxhaGameMultiplayer.is_list_open():
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		# Мышь влево/вправо вращает персонажа, вверх/вниз — наклон камеры.
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
@@ -36,7 +38,7 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
-	if is_on_floor() and Input.is_physical_key_pressed(KEY_SPACE):
+	if is_on_floor() and Input.is_physical_key_pressed(KEY_SPACE) and not FoxhaGameMultiplayer.is_list_open():
 		velocity.y = JUMP_VELOCITY
 
 	# X — влево/вправо, Y — вперёд/назад (вперёд это -Z).
@@ -44,6 +46,8 @@ func _physics_process(delta: float) -> void:
 		float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
 		float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
 	)
+	if FoxhaGameMultiplayer.is_list_open():
+		input_dir = Vector2.ZERO
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 
 	if direction:

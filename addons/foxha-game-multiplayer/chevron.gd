@@ -1,8 +1,12 @@
 class_name Chevron
 extends Button
 ## Стрелка «вниз» у игрока в списке: по нажатию открывается выпадающий список действий.
-## Рисуется линиями, чтобы не зависеть от глифов шрифта. При открытии меню
-## окно списка разворачивает стрелку вверх (rotation = PI).
+## Рисуется линиями, чтобы не зависеть от глифов шрифта.
+
+var opened := false:
+	set(value):
+		opened = value
+		queue_redraw()
 
 @export var color: Color = Color(1, 1, 1, 0.85):
 	set(value):
@@ -16,15 +20,17 @@ extends Button
 
 
 func _init() -> void:
-	flat = true
-	focus_mode = Control.FOCUS_NONE
+	theme_type_variation = &"QuietButton"
+	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 
 func _draw() -> void:
+	var center := size * 0.5
+	var direction := -1.0 if opened else 1.0
 	var points := PackedVector2Array([
-		Vector2(size.x * 0.18, size.y * 0.34),
-		Vector2(size.x * 0.50, size.y * 0.66),
-		Vector2(size.x * 0.82, size.y * 0.34),
+		center + Vector2(-4, -2 * direction),
+		center + Vector2(0, 2 * direction),
+		center + Vector2(4, -2 * direction),
 	])
-	draw_polyline(points, color, thickness, true)
+	draw_polyline(points, Color("#ff7b2c") if opened or is_hovered() else color, thickness, true)

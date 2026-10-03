@@ -15,6 +15,20 @@ const AUTOLOAD_PATH := "res://addons/foxha-game-multiplayer/game_multiplayer.gd"
 
 
 func _enter_tree() -> void:
+	var settings := {
+		"foxha_multiplayer/api_url": "https://games.foxha.ru",
+		"foxha_multiplayer/game_id": "",
+		"foxha_multiplayer/protocol_version": "1",
+	}
+	var changed := false
+	for key: String in settings:
+		if not ProjectSettings.has_setting(key):
+			ProjectSettings.set_setting(key, settings[key])
+			changed = true
+		ProjectSettings.set_initial_value(key, settings[key])
+		ProjectSettings.add_property_info({"name": key, "type": TYPE_STRING})
+	if changed:
+		ProjectSettings.save()
 	# На случай, если запись потерялась: восстанавливаем автозагрузку.
 	if ProjectSettings.has_setting("autoload/" + AUTOLOAD_NAME):
 		return

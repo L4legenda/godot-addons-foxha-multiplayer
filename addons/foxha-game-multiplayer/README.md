@@ -1,55 +1,95 @@
 # Foxha Game Multiplayer
 
-Аддон Godot 4: окно со списком игроков по **Shift+Tab** — затемнение экрана
-с анимацией 0.3 с, перетаскиваемое окно, разделы «Friends» и «Other»,
-у каждого игрока стрелка с действиями «Пригласить» и «Присоединиться».
+Godot 4: оранжево-чёрный оверлей по **Shift+Tab**, вход и регистрация внутри
+игры, друзья, приглашения и WebRTC-лобби на 2–8 игроков.
+Начальная ширина 260 px; окно перетаскивается за шапку и изменяет размер
+ручкой справа снизу (минимум 260 × 480). Размер сохраняется на время запуска.
 
 ## Установка
 
-1. Скопировать папку `addons/foxha-game-multiplayer/` в проект.
-2. `Project → Project Settings → Plugins` → включить **Foxha Game Multiplayer**.
+1. Скопируйте addons/foxha-game-multiplayer/ в проект.
+2. Включите Foxha Game Multiplayer в Project Settings → Plugins.
+3. Задайте foxha_multiplayer/game_id — публичный UUID опубликованной игры,
+   **не код владельца**. API URL по умолчанию https://games.foxha.ru,
+   foxha_multiplayer/protocol_version — 1. Настройки добавляются при включении
+   плагина; при необходимости включите расширенные настройки редактора.
+4. Для скачиваемой игры установите официальный webrtc-native из корня аддона:
 
-Плагин сам регистрирует автозагрузку `FoxhaGameMultiplayer`, поэтому добавлять
-что-либо в сцены не нужно: окно создаётся при старте игры.
-
-## Использование
-
-```gdscript
-# Данные игроков
-FoxhaGameMultiplayer.set_me({"nickname": "Me", "avatar_color": Color.SKY_BLUE})
-FoxhaGameMultiplayer.set_friends([
-    {"nickname": "Alex", "avatar_color": Color.ORANGE_RED},
-])
-FoxhaGameMultiplayer.set_other([
-    {"nickname": "Guest", "avatar_color": Color.GRAY},
-])
-
-# Управление окном
-FoxhaGameMultiplayer.open_list()
-FoxhaGameMultiplayer.close_list()
-FoxhaGameMultiplayer.toggle_list()
-print(FoxhaGameMultiplayer.is_list_open())
-
-# Реакция на действия из выпадающего списка ("invite" / "join")
-FoxhaGameMultiplayer.action_requested.connect(func(player, action):
-    print(action, " -> ", player.nickname)
-)
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-webrtc.ps1
 ```
 
-Пока `set_*` не вызваны, показываются заглушки из `player_list.gd` (MOCK_ME,
-MOCK_FRIENDS, MOCK_OTHER) — так окно видно сразу после установки.
+Скрипт проверяет SHA-256 закреплённой версии и распаковывает её в
+addons/webrtc_native/. При переносе в другой проект перенесите и эту папку.
+Бинарные файлы исключены из Git; устанавливайте зависимость на машине сборки.
+Web-экспорт использует встроенный браузерный WebRTC.
 
-## Настройки
+Сервер должен поддерживать новые game-auth и multiplayer endpoints,
+страница Foxha — обновлённый postMessage-мост. Для связи через интернет
+настройте STUN/TURN на сервере. Веб-игра использует мост при запуске
+внутри страницы Foxha. Отсутствие TURN отображается сообщением в аддоне.
 
-Открыть `addons/foxha-game-multiplayer/player_list.tscn` и выбрать корневой узел:
+## Вход и подключение
 
-- `pause_game` — ставить игру на паузу, пока окно открыто (по умолчанию да);
-- `release_mouse` — освобождать курсор и возвращать прежний режим при закрытии;
-- `toggle_with_shift_tab` — реагировать на Shift+Tab (можно отключить, если
-  окно открывается только из кода).
+Доступны регистрация, вход, ввод кода из письма и повторная отправка.
+Переход на сайт не нужен. После подтверждения почты войдите с паролем.
+Пароль очищается после отправки, токены хранятся только в памяти.
+Access обновляется автоматически в пределах 12-часовой сессии.
 
-## Заметки
+Хост выбирает вместимость и доступ: по коду, для друзей или по приглашению.
+Гость вводит код, принимает приглашение либо нажимает «Присоединиться»
+у доступного друга. Создание дружбы пока выполняется на сайте; аддон
+отображает существующих друзей. Участники лобби показаны номерами peer.
 
-- Esc закрывает сначала выпадающий список, потом само окно.
-- Клик мимо выпадающего списка закрывает только его.
-- Стили и размеры окна — в `player_list.tscn`, цвета и тексты — в скрипте.
+Аддон назначает multiplayer.multiplayer_peer. Хост имеет peer ID 1,
+гости подключаются к нему; SceneMultiplayer пересылает сообщения между гостями.
+Выход хоста закрывает лобби. Гостю доступно ручное переподключение;
+invite-лобби может потребовать нового приглашения. Миграции хоста нет.
+
+## Интеграция
+
+```gdscript
+func _ready() -> void:
+    FoxhaGameMultiplayer.client.transport_ready.connect(func(_peer):
+        print("Транспорт создан; ждём multiplayer.peer_connected")
+    )
+    multiplayer.peer_connected.connect(func(peer_id):
+        print("Подключён игрок ", peer_id)
+    )
+
+func _unhandled_input(event: InputEvent) -> void:
+    if FoxhaGameMultiplayer.is_list_open():
+        return
+    # Управление игрой.
+```
+
+transport_ready означает создание транспорта, а не завершение всех соединений.
+Создание персонажей, авторитет сервера, RPC и синхронизацию реализует игра.
+При открытом оверлее сетевой цикл продолжает работать, игра не ставится
+на паузу. Проверяйте is_list_open() также перед чтением движения через Input
+в _physics_process, как в демонстрационном player.gd.
+
+Доступны FoxhaGameMultiplayer.open_list()/close_list()/toggle_list().
+Клиент предоставляет асинхронные методы authenticate, confirm_email,
+resend_code, create_lobby, join_lobby, leave_lobby, invite_player,
+accept_invitation, decline_invitation, reconnect, logout и сигналы
+user_changed, lobby_changed, social_changed, message, transport_ready.
+
+Старые set_me/set_friends/set_other и action_requested(player, action)
+сохранены. Сетевые данные обновляют списки автоматически.
+Поиск, фильтры, прокрутка, Esc и возврат фокуса работают в окне игроков.
+Тема — overlay_theme.tres, основная сцена — player_list.tscn,
+аккаунт/лобби — session_panel.gd, транспорт — network_client.gd.
+
+## Проверки
+
+```sh
+godot --headless --path . --script res://tests/overlay_smoke.gd
+godot --headless --path . --script res://tests/session_ui_smoke.gd
+```
+
+Тест network_smoke.gd запускает восемь native-клиентов против API
+http://127.0.0.1:5099. Требуется переменная FOXHA_TEST_GAME с UUID тестовой игры,
+выключенное подтверждение почты в тестовом API и установленный webrtc-native.
+Тест создаёт аккаунты: используйте отдельную тестовую БД.
+HTTP разрешается только явно для localhost в тестовом клиенте; рабочий API — HTTPS.

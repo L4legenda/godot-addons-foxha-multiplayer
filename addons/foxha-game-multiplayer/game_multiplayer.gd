@@ -16,14 +16,28 @@ extends Node
 signal action_requested(player: Dictionary, action: String)
 
 const PlayerListScene := preload("player_list.tscn")
+const NetworkClient := preload("res://addons/foxha-game-multiplayer/network_client.gd")
+const SessionPanel := preload("res://addons/foxha-game-multiplayer/session_panel.gd")
 
 var player_list: CanvasLayer
+var client: NetworkClient
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	player_list = PlayerListScene.instantiate()
 	add_child(player_list)
+	player_list.pause_game = false
+	client = NetworkClient.new()
+	client.name = "NetworkClient"
+	client.api_url = ProjectSettings.get_setting("foxha_multiplayer/api_url", "https://games.foxha.ru")
+	client.game_id = ProjectSettings.get_setting("foxha_multiplayer/game_id", "")
+	client.protocol_version = ProjectSettings.get_setting("foxha_multiplayer/protocol_version", "1")
+	add_child(client)
+	var session := SessionPanel.new()
+	session.attach(player_list, client)
 	player_list.action_requested.connect(_on_action_requested)
+	client.initialize.call_deferred()
 
 
 func open_list() -> void:
@@ -56,3 +70,9 @@ func set_other(players: Array) -> void:
 
 func _on_action_requested(player: Dictionary, action: String) -> void:
 	action_requested.emit(player, action)
+	if action == "invite" and player.has("id"):
+		await client.invite_player(str(player.id))
+	elif action == "join" and player.get("roomCode") != null:
+		await client.join_lobby(str(player.roomCode))
+	elif action == "join":
+		client.message.emit("У игрока нет доступного лобби.")
