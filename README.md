@@ -1,6 +1,6 @@
 # Foxha Playground
 
-Тестовая сетевая 3D-арена на Godot 4.7 для 2–8 игроков. Основная и единственная
+Тестовая сетевая 3D-арена на Godot 4.7 для 2–20 игроков. Основная и единственная
 игровая сцена — `main.tscn`. Браузер и Windows используют один API и общий
 протокол `playground-3d-1`; старые 2D-сборки требуют обновления.
 
@@ -63,6 +63,10 @@ postMessage-мост родительской страницы. Простое �
 с версией Godot. Native-библиотеки хранятся в Git вместе с проектом.
 
 [Документация аддона](addons/foxha-game-multiplayer/README.md).
+
+Проверка 20 локальных WebRTC-участников (появление, движение, камеры, выход):
+`godot --headless --path . --script res://tests/main_network_smoke.gd -- --webrtc --twenty`.
+Это функциональный тест на одном компьютере, а не замер нагрузки через интернет.
 
 Если на macOS появляются ошибки `WebRTCPeerConnectionExtension::_initialize`
 или `_create_data_channel must be overridden`, реализация WebRTC не загружена.

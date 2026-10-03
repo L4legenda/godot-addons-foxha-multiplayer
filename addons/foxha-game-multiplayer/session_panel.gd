@@ -108,8 +108,8 @@ func attach(target: CanvasLayer, network: ClientScript) -> void:
 	_capacity_label = _label(_lobby, "Максимум игроков")
 	_capacity = SpinBox.new()
 	_capacity.min_value = 2
-	_capacity.max_value = 8
-	_capacity.value = 8
+	_capacity.max_value = 20
+	_capacity.value = 20
 	_lobby.add_child(_capacity)
 	_visibility = OptionButton.new()
 	for title in ["По коду", "Для друзей", "По приглашению"]:
@@ -261,7 +261,7 @@ func _lobby_changed(data: Dictionary) -> void:
 	_leave.visible = joined
 	_retry.visible = joined and client._my_peer_id() != 1
 	_room_status.text = "Лобби " + str(data.get("code", "")) if joined else "Создайте лобби или введите код."
-	_members.text = "%d / %d игроков" % [data.get("members", []).size(), data.get("capacity", 8)] if joined else ""
+	_members.text = "%d / %d игроков" % [data.get("members", []).size(), data.get("capacity", 20)] if joined else ""
 	if joined:
 		var players: Array = []
 		for member: Dictionary in data.get("members", []):

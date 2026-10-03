@@ -14,12 +14,13 @@ func _check(ok: bool, text: String) -> void:
 
 func _run() -> void:
 	var use_webrtc := "--webrtc" in OS.get_cmdline_user_args()
+	var count := 20 if "--twenty" in OS.get_cmdline_user_args() else 3
 	var server := ENetMultiplayerPeer.new()
 	var port := 19879
-	while not use_webrtc and server.create_server(port, 8) != OK:
+	while not use_webrtc and server.create_server(port, count) != OK:
 		port += 1
 		_check(port < 19900, "Test port available")
-	for index in range(3):
+	for index in range(count):
 		var branch := SubViewport.new()
 		branch.own_world_3d = true
 		branch.name = "Instance%d" % index
@@ -47,7 +48,7 @@ func _run() -> void:
 		world._start_network(peer)
 	if use_webrtc:
 		await create_timer(0.3).timeout # Real signaling is asynchronous, unlike immediate local SDP wiring.
-		for index in [1, 2]:
+		for index in range(1, count):
 			var host_link := WebRTCPeerConnection.new()
 			var guest_link := WebRTCPeerConnection.new()
 			_check(host_link.initialize({}) == OK and guest_link.initialize({}) == OK, "Initialize WebRTC")
@@ -59,13 +60,13 @@ func _run() -> void:
 			_check(apis[0].multiplayer_peer.add_peer(host_link, index + 1) == OK, "Add guest to host")
 			_check(apis[index].multiplayer_peer.add_peer(guest_link, 1) == OK, "Add host to guest")
 			host_link.create_offer()
-	var deadline := Time.get_ticks_msec() + 7000
+	var deadline := Time.get_ticks_msec() + 20000
 	while Time.get_ticks_msec() < deadline:
-		if worlds.all(func(w): return w.players.size() == 3):
+		if worlds.all(func(w): return w.players.size() == count):
 			break
 		await process_frame
 	for world in worlds:
-		_check(world.players.size() == 3, "All three instances spawn all players")
+		_check(world.players.size() == count, "All instances spawn all players")
 		for id in world.players:
 			_check(world.players[id].locally_controlled == (id == world._local_id), "Only own player accepts input")
 			_check(world.players[id].get_node("CamPivot/Camera3D").current == (id == world._local_id), "Only own camera is current")
@@ -84,7 +85,7 @@ func _run() -> void:
 	_check(worlds[2].players.size() == 1 and not worlds[2]._active, "Leaving restores offline player")
 	for api in apis:
 		api.multiplayer_peer.close()
-	print("3D multiplayer: PASS (3 peers, cameras, movement, rotation, disconnect, leave)")
+	print("3D multiplayer: PASS (%d peers, cameras, movement, rotation, disconnect, leave)" % count)
 	quit()
 
 func _description(kind: String, sdp: String, source: WebRTCPeerConnection, target: WebRTCPeerConnection) -> void:

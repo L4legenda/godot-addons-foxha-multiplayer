@@ -224,7 +224,7 @@ func _restore_session() -> void:
 		message.emit("Нет связи для восстановления входа. Повторим автоматически.")
 
 
-func create_lobby(capacity := 8, visibility := "friends") -> bool:
+func create_lobby(capacity := 20, visibility := "friends") -> bool:
 	if not await _prepare_transport():
 		return false
 	var result := await _request("create", {"capacity": capacity, "visibility": visibility, "protocolVersion": protocol_version})
