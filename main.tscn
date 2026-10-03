@@ -1,6 +1,6 @@
 [gd_scene load_steps=17 format=3]
 
-[ext_resource type="PackedScene" path="res://player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://main.gd" id="1_main"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -56,6 +56,7 @@ size = Vector3(1, 4, 1)
 size = Vector3(1, 4, 1)
 
 [node name="Main" type="Node3D"]
+script = ExtResource("1_main")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_main")
@@ -101,7 +102,7 @@ mesh = SubResource("BoxMesh_column")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Column"]
 shape = SubResource("BoxShape3D_column")
 
-[node name="Player" parent="." instance=ExtResource("1_player")]
+[node name="Players" type="Node3D" parent="."]
 
 [node name="Hud" type="CanvasLayer" parent="."]
 

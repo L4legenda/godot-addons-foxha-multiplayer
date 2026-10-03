@@ -83,6 +83,23 @@ user_changed, lobby_changed, social_changed, message, transport_ready.
 
 ## Проверки
 
+### 3D-сцена main.tscn
+
+Запустите `res://main.tscn` у всех участников, войдите под разными аккаунтами,
+создайте лобби и присоединитесь по коду. `main.gd` создаёт персонажей после
+установления игрового соединения и передаёт позиции и повороты через хоста.
+Камера и управление включены только у своего персонажа; выход из лобби
+возвращает одиночный режим. Это основная игровая сцена проекта; протокол
+`playground-3d-1` отделяет её от несовместимых старых сборок.
+Движение в этом примере рассчитывает сам игрок, проверки против читов нет.
+
+Локальная проверка трёх участников через WebRTC (нужен webrtc-native),
+без аккаунтов и запросов к API:
+
+```sh
+godot --headless --path . --script res://tests/main_network_smoke.gd -- --webrtc
+```
+
 ```sh
 godot --headless --path . --script res://tests/overlay_smoke.gd
 godot --headless --path . --script res://tests/session_ui_smoke.gd

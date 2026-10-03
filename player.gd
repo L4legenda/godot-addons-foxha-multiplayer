@@ -11,10 +11,15 @@ const PITCH_MAX := 0.2
 @onready var cam_pivot: Node3D = $CamPivot
 
 var gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
+var locally_controlled := true
 
 
 func _ready() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	$CamPivot/Camera3D.current = locally_controlled
+	set_physics_process(locally_controlled)
+	set_process_unhandled_input(locally_controlled)
+	if locally_controlled and not FoxhaGameMultiplayer.is_list_open():
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
