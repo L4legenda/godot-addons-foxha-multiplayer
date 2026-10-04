@@ -102,7 +102,7 @@ func set_me(player: Dictionary) -> void:
 	me_nickname.text = str(player.get("nickname", "Игрок")).strip_edges()
 	me_nickname.tooltip_text = me_nickname.text
 	%Initial.text = me_nickname.text.left(1).to_upper()
-	%MyStatus.text = "●  " + _status_text(player)
+	%MyStatus.text = _status_text(player)
 	%MyStatus.add_theme_color_override("font_color", _status_color(player))
 
 
@@ -254,8 +254,8 @@ func _make_row(player: Dictionary) -> PanelContainer:
 	if _status(player) == "offline":
 		nickname.add_theme_color_override("font_color", MUTED)
 	identity.add_child(nickname)
-	var status_label := Label.new()
-	status_label.text = "●  " + _status_text(player)
+	var status_label := preload("status_label.gd").new()
+	status_label.text = _status_text(player)
 	status_label.tooltip_text = _status_text(player)
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_label.add_theme_font_size_override("font_size", 12)

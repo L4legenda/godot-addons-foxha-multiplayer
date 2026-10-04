@@ -30,11 +30,21 @@ func _ready() -> void:
 		_offline()
 
 
-func _clear_players() -> void:
+func _reset_players(local_id: int) -> void:
+	# Keep the actual local character, including transform, velocity and camera state.
+	var local_actor: Node = players.get(_local_id)
 	for actor in players.values():
+		if actor == local_actor:
+			continue
 		actor.get_parent().remove_child(actor)
 		actor.queue_free()
 	players.clear()
+	_local_id = local_id
+	if is_instance_valid(local_actor):
+		local_actor.name = "Player_%d" % _local_id
+		players[_local_id] = local_actor
+	else:
+		_spawn(_local_id)
 
 
 func _spawn(id: int) -> void:
@@ -54,17 +64,13 @@ func _spawn(id: int) -> void:
 func _offline() -> void:
 	_active = false
 	_connected = false
-	_local_id = 1
-	_clear_players()
-	_spawn(1)
+	_reset_players(1)
 
 
 func _start_network(_peer: MultiplayerPeer) -> void:
 	_active = true
 	_connected = multiplayer.is_server()
-	_local_id = multiplayer.get_unique_id()
-	_clear_players()
-	_spawn(_local_id)
+	_reset_players(multiplayer.get_unique_id())
 	if _connected:
 		for id in multiplayer.get_peers():
 			_spawn(id)

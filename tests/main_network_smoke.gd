@@ -45,7 +45,17 @@ func _run() -> void:
 			if index != 0:
 				_check(peer.create_client("127.0.0.1", port) == OK, "Create guest")
 		api.multiplayer_peer = peer
+		var local_actor: CharacterBody3D = world.players[world._local_id]
+		local_actor.set_physics_process(false)
+		local_actor.position = Vector3(index * 2, 3, 7)
+		local_actor.rotation.y = 0.6
+		local_actor.velocity = Vector3(1, 2, 3)
+		local_actor.get_node("CamPivot").rotation.x = -0.7
 		world._start_network(peer)
+		_check(world.players[world._local_id] == local_actor, "Create/join keeps the local character instance")
+		_check(local_actor.position == Vector3(index * 2, 3, 7), "Create/join preserves position")
+		_check(is_equal_approx(local_actor.rotation.y, 0.6) and is_equal_approx(local_actor.get_node("CamPivot").rotation.x, -0.7), "Create/join preserves view direction")
+		_check(local_actor.velocity == Vector3(1, 2, 3), "Create/join preserves velocity")
 	if use_webrtc:
 		await create_timer(0.3).timeout # Real signaling is asynchronous, unlike immediate local SDP wiring.
 		for index in range(1, count):
@@ -81,8 +91,11 @@ func _run() -> void:
 	apis[1].multiplayer_peer.close()
 	await create_timer(0.4).timeout
 	_check(not worlds[0].players.has(moving_id) and not worlds[2].players.has(moving_id), "Disconnected player removed everywhere")
+	var leaving_actor: Node3D = worlds[2].players[worlds[2]._local_id]
+	var leaving_transform := leaving_actor.transform
 	worlds[2]._lobby_changed({})
 	_check(worlds[2].players.size() == 1 and not worlds[2]._active, "Leaving restores offline player")
+	_check(worlds[2].players[1] == leaving_actor and leaving_actor.transform == leaving_transform, "Leaving keeps position and local character")
 	for api in apis:
 		api.multiplayer_peer.close()
 	print("3D multiplayer: PASS (%d peers, cameras, movement, rotation, disconnect, leave)" % count)

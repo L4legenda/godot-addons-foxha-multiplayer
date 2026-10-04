@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://addons/foxha-game-multiplayer/player_list.gd" id="1_script"]
 [ext_resource type="Theme" path="res://addons/foxha-game-multiplayer/overlay_theme.tres" id="2_theme"]
 [ext_resource type="Script" path="res://addons/foxha-game-multiplayer/resize_grip.gd" id="3_grip"]
+[ext_resource type="Script" path="res://addons/foxha-game-multiplayer/status_label.gd" id="4_status"]
 
 [sub_resource type="StyleBoxFlat" id="PanelStyle"]
 bg_color = Color(0.055, 0.059, 0.067, 1)
@@ -151,7 +152,8 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.55, 0.28, 1)
 theme_override_font_sizes/font_size = 13
-text = "●  В сети"
+text = "В сети"
+script = ExtResource("4_status")
 text_overrun_behavior = 3
 
 [node name="You" type="Label" parent="Panel/Margin/Content/Profile/Header"]

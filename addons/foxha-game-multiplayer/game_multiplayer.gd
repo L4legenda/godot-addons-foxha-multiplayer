@@ -18,6 +18,7 @@ signal action_requested(player: Dictionary, action: String)
 const PlayerListScene := preload("player_list.tscn")
 const NetworkClient := preload("res://addons/foxha-game-multiplayer/network_client.gd")
 const SessionPanel := preload("res://addons/foxha-game-multiplayer/session_panel.gd")
+const InvitationNotifications := preload("res://addons/foxha-game-multiplayer/invitation_notifications.gd")
 
 var player_list: CanvasLayer
 var client: NetworkClient
@@ -36,6 +37,9 @@ func _ready() -> void:
 	add_child(client)
 	var session := SessionPanel.new()
 	session.attach(player_list, client)
+	var notifications := InvitationNotifications.new()
+	notifications.client = client
+	add_child(notifications)
 	player_list.action_requested.connect(_on_action_requested)
 	# Start restoring during autoload startup, before the first game frame.
 	client.initialize()
